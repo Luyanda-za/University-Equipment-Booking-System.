@@ -6,21 +6,33 @@ import { BookingStatusBadge } from '@/components/StatusBadge';
 import type { Booking } from '@/types/database';
 import { Loader2, Package, Check, X, Clock, MapPin, Filter, MessageSquare } from 'lucide-react';
 
+/**
+ * AdminBookings Component
+ * Enables administrators to view all equipment booking requests, filter them by status,
+ * approve pending requests, or reject them with a mandatory rejection reason via a modal.
+ * Includes real-time database listener updates via Supabase WebSockets.
+ */
 export function AdminBookings() {
   const { showToast } = useToast();
+
+  // State Management
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [actionId, setActionId] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null); // Tracks the specific booking currently processing an action
 
-  // Rejection modal state
+  // Rejection Modal State
   const [rejectTarget, setRejectTarget] = useState<Booking | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
 
+  /**
+   * Initial fetch and setup of real-time Supabase subscriptions for booking changes.
+   */
   useEffect(() => {
     loadBookings();
 
+    // Subscribe to real-time changes on the 'bookings' table (INSERT and UPDATE events)
     const channel = supabase
       .channel('admin-bookings-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, () => {
@@ -31,11 +43,15 @@ export function AdminBookings() {
       })
       .subscribe();
 
+    // Cleanup subscription on unmount
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
 
+  /**
+   * Fetches all bookings joined with relational equipment and profile user data.
+   */
   const loadBookings = async () => {
     setLoading(true);
 
@@ -56,9 +72,14 @@ export function AdminBookings() {
     setLoading(false);
   };
 
+  /**
+   * Approves a pending booking request.
+   * @param bookingId - Unique identifier of the booking to approve
+   */
   const handleApprove = async (bookingId: string) => {
-    setActionId(bookingId);
+    setActionId(bookingId); // Set loading state for specific row action button
 
+    // Attempt status update in Supabase (database constraints handle overlapping booking prevention)
     const { error } = await supabase
       .from('bookings')
       .update({ status: 'approved', rejection_reason: null })
@@ -68,6 +89,7 @@ export function AdminBookings() {
     setActionId(null);
 
     if (error) {
+      // Handle overlap or custom database trigger rejection
       if (error.message.includes('already booked') || error.message.includes('overlaps')) {
         showToast('Cannot approve: this equipment is already booked for that time period by another approved booking.', 'error');
       } else {
@@ -80,11 +102,17 @@ export function AdminBookings() {
     loadBookings();
   };
 
+  /**
+   * Opens the rejection modal for a target booking.
+   */
   const openRejectModal = (booking: Booking) => {
     setRejectTarget(booking);
     setRejectionReason('');
   };
 
+  /**
+   * Submits the booking rejection along with a mandatory explanation reason.
+   */
   const handleReject = async () => {
     if (!rejectTarget) return;
 
@@ -109,14 +137,16 @@ export function AdminBookings() {
     }
 
     showToast('Booking rejected with reason sent to user.', 'info');
-    setRejectTarget(null);
+    setRejectTarget(null); // Close modal
     loadBookings();
   };
 
+  // Filter bookings based on selected status dropdown filter
   const filtered = statusFilter === 'all'
     ? bookings
     : bookings.filter((b) => b.status === statusFilter);
 
+  // Loading spinner during initial data fetch
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -127,12 +157,13 @@ export function AdminBookings() {
 
   return (
     <div>
+      {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Manage Bookings</h1>
         <p className="text-sm text-slate-500 mt-1">View, approve, or reject booking requests</p>
       </div>
 
-      {/* Filter */}
+      {/* Filter Dropdown */}
       <div className="relative mb-4 sm:w-56">
         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
         <select
@@ -148,7 +179,7 @@ export function AdminBookings() {
         </select>
       </div>
 
-      {/* Bookings list */}
+      {/* Empty State vs. Bookings List */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
           <Clock className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -160,11 +191,16 @@ export function AdminBookings() {
           {filtered.map((booking) => (
             <div key={booking.id} className="bg-white rounded-xl border border-slate-200 p-5">
               <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                {/* Equipment & user info */}
+                
+                {/* Equipment Details & User Meta */}
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                     {booking.equipment?.image_url ? (
-                      <img src={bustImageCache(booking.equipment.image_url) ?? undefined} alt={booking.equipment.name} className="w-full h-full object-cover" />
+                      <img 
+                        src={bustImageCache(booking.equipment.image_url) ?? undefined} 
+                        alt={booking.equipment.name} 
+                        className="w-full h-full object-cover" 
+                      />
                     ) : (
                       <Package className="w-6 h-6 text-blue-600" />
                     )}
@@ -184,6 +220,8 @@ export function AdminBookings() {
                         {formatTime(booking.start_time)} — {formatTime(booking.end_time)}
                       </span>
                     </div>
+
+                    {/* Display rejection reason if booking status is rejected */}
                     {booking.status === 'rejected' && booking.rejection_reason && (
                       <div className="mt-2 flex items-start gap-1.5 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                         <MessageSquare className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -193,10 +231,11 @@ export function AdminBookings() {
                   </div>
                 </div>
 
-                {/* Status & actions */}
+                {/* Status Badge & Actions */}
                 <div className="flex items-center gap-3 lg:flex-col lg:items-end">
                   <BookingStatusBadge status={booking.status} />
 
+                  {/* Approve / Reject Controls (Only visible for 'pending' requests) */}
                   {booking.status === 'pending' && (
                     <div className="flex items-center gap-2">
                       <button
@@ -218,13 +257,14 @@ export function AdminBookings() {
                     </div>
                   )}
                 </div>
+
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Rejection modal with comment box */}
+      {/* Rejection Modal for entering rejection feedback */}
       <Modal open={!!rejectTarget} onClose={() => setRejectTarget(null)} title="Reject Booking" size="sm">
         <div>
           <p className="text-slate-600 mb-1">
@@ -269,10 +309,16 @@ export function AdminBookings() {
   );
 }
 
+/**
+ * Helper function to format ISO date strings into readable dates (e.g. "Sep 24, 2026").
+ */
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+/**
+ * Helper function to format ISO date strings into 12-hour time (e.g. "09:30 AM").
+ */
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
