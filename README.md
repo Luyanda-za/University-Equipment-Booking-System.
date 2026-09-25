@@ -1,3 +1,0 @@
-# university-equipment-booking-system
-
-
