@@ -189,7 +189,6 @@ export function Login({ onNavigate }: LoginProps) {
                   </div>
                 </div>
 
-<<<<<<< Updated upstream
                 <form onSubmit={handleSendCode} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Email Address</label>
@@ -326,17 +325,6 @@ export function Login({ onNavigate }: LoginProps) {
                 </form>
               </>
             )}
-=======
-              <button
-                type="submit"
-                disabled={resetLoading}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md"
-              >
-                {resetLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {resetLoading ? 'Sending...' : 'Send Reset Link'}
-              </button>
-            </form>
->>>>>>> Stashed changes
 
             <button
               onClick={handleBackToLogin}
@@ -450,7 +438,6 @@ export function Login({ onNavigate }: LoginProps) {
       </div>
     </div>
   );
-<<<<<<< Updated upstream
 }
 
 function StepDot({ active, label, done }: { active: boolean; label: string; done: boolean }) {
@@ -468,6 +455,3 @@ function StepDot({ active, label, done }: { active: boolean; label: string; done
     </div>
   );
 }
-=======
-}
->>>>>>> Stashed changes
