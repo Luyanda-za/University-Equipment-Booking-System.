@@ -144,15 +144,26 @@ export function Login({ onNavigate }: LoginProps) {
   // Forgot password view
   if (showForgot) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 px-4 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
-        <div className="w-full max-w-md">
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 px-4 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
+        {/* Background Repeating Hat Pattern */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-10">
+          <div className="absolute top-12 left-16 transform -rotate-12"><GraduationCap className="w-24 h-24 text-blue-700" /></div>
+          <div className="absolute top-24 left-1/3 transform rotate-12"><GraduationCap className="w-28 h-28 text-blue-800" /></div>
+          <div className="absolute top-10 right-20 transform rotate-45"><GraduationCap className="w-32 h-32 text-blue-600" /></div>
+          <div className="absolute top-1/2 left-10 transform -rotate-45"><GraduationCap className="w-20 h-20 text-blue-900" /></div>
+          <div className="absolute bottom-16 left-1/4 transform rotate-12"><GraduationCap className="w-36 h-36 text-blue-700" /></div>
+          <div className="absolute bottom-10 right-1/4 transform -rotate-30"><GraduationCap className="w-28 h-28 text-blue-600" /></div>
+          <div className="absolute left-1/4 top-1/3 transform -rotate-12 opacity-30"><GraduationCap className="w-64 h-64 text-blue-800" /></div>
+        </div>
+
+        <div className="w-full max-w-md relative z-10">
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-blue-600/20">
-              <GraduationCap className="w-7 h-7 text-white" />
+            <div className="w-28 h-28 bg-blue-600 rounded-3xl flex items-center justify-center mb-4 shadow-2xl shadow-blue-600/40 ring-4 ring-white dark:ring-slate-800">
+              <GraduationCap className="w-14 h-14 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">UniEquip</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">University Equipment Booking System</p>
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-50">UniEquip</h1>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">University Equipment Booking System</p>
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8">
@@ -178,6 +189,7 @@ export function Login({ onNavigate }: LoginProps) {
                   </div>
                 </div>
 
+<<<<<<< Updated upstream
                 <form onSubmit={handleSendCode} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Email Address</label>
@@ -314,6 +326,17 @@ export function Login({ onNavigate }: LoginProps) {
                 </form>
               </>
             )}
+=======
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md"
+              >
+                {resetLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {resetLoading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+            </form>
+>>>>>>> Stashed changes
 
             <button
               onClick={handleBackToLogin}
@@ -329,15 +352,27 @@ export function Login({ onNavigate }: LoginProps) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 px-4 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
-      <div className="w-full max-w-md">
-        {/* Logo */}
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 px-4 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
+      {/* Background Repeating Hat Pattern matching mockup style */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-10">
+        <div className="absolute top-12 left-16 transform -rotate-12"><GraduationCap className="w-24 h-24 text-blue-700" /></div>
+        <div className="absolute top-24 left-1/3 transform rotate-12"><GraduationCap className="w-28 h-28 text-blue-800" /></div>
+        <div className="absolute top-10 right-20 transform rotate-45"><GraduationCap className="w-32 h-32 text-blue-600" /></div>
+        <div className="absolute top-1/2 left-10 transform -rotate-45"><GraduationCap className="w-20 h-20 text-blue-900" /></div>
+        <div className="absolute bottom-16 left-1/4 transform rotate-12"><GraduationCap className="w-36 h-36 text-blue-700" /></div>
+        <div className="absolute bottom-10 right-1/4 transform -rotate-30"><GraduationCap className="w-28 h-28 text-blue-600" /></div>
+        {/* Large Watermark Cap in background */}
+        <div className="absolute left-12 bottom-1/4 transform -rotate-12 opacity-25"><GraduationCap className="w-72 h-72 text-blue-800" /></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Massive Header Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-blue-600/20">
-            <GraduationCap className="w-7 h-7 text-white" />
+          <div className="w-28 h-28 bg-blue-600 rounded-3xl flex items-center justify-center mb-4 shadow-2xl shadow-blue-600/40 ring-4 ring-white dark:ring-slate-800 transform transition hover:scale-105">
+            <GraduationCap className="w-14 h-14 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">UniEquip</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">University Equipment Booking System</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-50">UniEquip</h1>
+          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">University Equipment Booking System</p>
         </div>
 
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8">
@@ -395,7 +430,7 @@ export function Login({ onNavigate }: LoginProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               {loading ? 'Signing in...' : 'Sign In'}
@@ -415,6 +450,7 @@ export function Login({ onNavigate }: LoginProps) {
       </div>
     </div>
   );
+<<<<<<< Updated upstream
 }
 
 function StepDot({ active, label, done }: { active: boolean; label: string; done: boolean }) {
@@ -432,3 +468,6 @@ function StepDot({ active, label, done }: { active: boolean; label: string; done
     </div>
   );
 }
+=======
+}
+>>>>>>> Stashed changes
