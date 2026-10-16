@@ -12,6 +12,7 @@ import { MyBookings } from '@/pages/MyBookings';
 import { AdminDashboard } from '@/pages/AdminDashboard';
 import { AdminEquipment } from '@/pages/AdminEquipment';
 import { AdminBookings } from '@/pages/AdminBookings';
+import { Settings } from '@/pages/Settings';
 import { Loader2 } from 'lucide-react';
 
 type Page =
@@ -24,7 +25,8 @@ type Page =
   | 'my-bookings'
   | 'admin-dashboard'
   | 'admin-equipment'
-  | 'admin-bookings';
+  | 'admin-bookings'
+  | 'settings';
 
 const ADMIN_PAGES: Page[] = ['admin-dashboard', 'admin-equipment', 'admin-bookings'];
 
@@ -46,12 +48,20 @@ function AppContent() {
     }
   }, [session, loading, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Guard admin pages
+  // Guard admin pages - non-admins can't access
   useEffect(() => {
     if (!loading && session && ADMIN_PAGES.includes(page) && !isAdmin) {
       setPage('dashboard');
     }
   }, [page, isAdmin, session, loading]);
+
+  // Guard user pages - admins can't access user-only features
+  const USER_ONLY_PAGES: Page[] = ['dashboard', 'equipment', 'equipment-details', 'create-booking', 'my-bookings'];
+  useEffect(() => {
+    if (!loading && session && isAdmin && USER_ONLY_PAGES.includes(page)) {
+      setPage('admin-dashboard');
+    }
+  }, [page, isAdmin, session, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleNavigate = (newPage: string) => {
     setPage(newPage as Page);
@@ -70,7 +80,7 @@ function AppContent() {
   // Loading screen
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
       </div>
     );
@@ -119,6 +129,8 @@ function AppContent() {
         return isAdmin ? <AdminEquipment /> : <Dashboard onNavigate={handleNavigate} onSelectEquipment={handleSelectEquipment} />;
       case 'admin-bookings':
         return isAdmin ? <AdminBookings /> : <Dashboard onNavigate={handleNavigate} onSelectEquipment={handleSelectEquipment} />;
+      case 'settings':
+        return <Settings onNavigate={handleNavigate} />;
       default:
         return <Dashboard onNavigate={handleNavigate} onSelectEquipment={handleSelectEquipment} />;
     }
