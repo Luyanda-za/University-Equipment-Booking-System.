@@ -2,7 +2,7 @@ export type UserRole = 'user' | 'admin';
 
 export type EquipmentStatus = 'available' | 'unavailable';
 
-export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'returned';
 
 export interface Profile {
   id: string;
