@@ -3,7 +3,7 @@ import { supabase, bustImageCache } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import type { Booking, Equipment } from '@/types/database';
 import { BookingStatusBadge } from '@/components/StatusBadge';
-import { Package, CalendarDays, Clock, ArrowRight, Loader2 } from 'lucide-react';
+import { Package, CalendarDays, Clock, ArrowRight, Loader2, AlertTriangle, RotateCcw } from 'lucide-react';
 
 interface DashboardProps {
   onNavigate: (page: string) => void;
@@ -32,7 +32,7 @@ export function Dashboard({ onNavigate, onSelectEquipment }: DashboardProps) {
         )
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false })
-        .limit(5),
+        .limit(20),
       supabase.from('equipment').select('id', { count: 'exact', head: true }),
     ]);
 
@@ -53,12 +53,87 @@ export function Dashboard({ onNavigate, onSelectEquipment }: DashboardProps) {
     (b) => (b.status === 'pending' || b.status === 'approved') && new Date(b.start_time) > new Date()
   );
 
+  const now = new Date();
+  const reminders = bookings.filter((b) => {
+    if (b.status !== 'approved') return false;
+    const end = new Date(b.end_time);
+    const hoursLeft = (end.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return hoursLeft > 0 && hoursLeft <= 24;
+  });
+
+  const returnedBookings = bookings.filter((b) => b.status === 'returned').slice(0, 3);
+
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Welcome, {profile?.full_name?.split(' ')[0]}</h1>
         <p className="text-sm text-slate-500 mt-1">Manage your equipment bookings</p>
       </div>
+
+      {/* Return Reminders */}
+      {reminders.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+            <h2 className="text-lg font-bold text-slate-900">Return Reminders</h2>
+          </div>
+          <div className="space-y-3">
+            {reminders.map((booking) => {
+              const hoursLeft = Math.ceil((new Date(booking.end_time).getTime() - now.getTime()) / (1000 * 60 * 60));
+              return (
+                <div key={booking.id} className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-4">
+                  <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {booking.equipment?.image_url ? (
+                      <img src={bustImageCache(booking.equipment.image_url) ?? undefined} alt={booking.equipment.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Package className="w-5 h-5 text-amber-600" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-slate-900 text-sm">{booking.equipment?.name ?? 'Unknown'}</h3>
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      Due back {formatDate(booking.end_time)} at {formatTime(booking.end_time)} — {hoursLeft} hour{hoursLeft !== 1 ? 's' : ''} left
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-200 text-amber-900 whitespace-nowrap">
+                    {hoursLeft}h left
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recently Returned */}
+      {returnedBookings.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <RotateCcw className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-bold text-slate-900">Recently Returned</h2>
+          </div>
+          <div className="space-y-3">
+            {returnedBookings.map((booking) => (
+              <div key={booking.id} className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-4">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {booking.equipment?.image_url ? (
+                    <img src={bustImageCache(booking.equipment.image_url) ?? undefined} alt={booking.equipment.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Package className="w-5 h-5 text-blue-600" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-slate-900 text-sm">{booking.equipment?.name ?? 'Unknown'}</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Returned after {formatDate(booking.start_time)} — {formatDate(booking.end_time)}
+                  </p>
+                </div>
+                <BookingStatusBadge status={booking.status} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -124,7 +199,7 @@ export function Dashboard({ onNavigate, onSelectEquipment }: DashboardProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {bookings.map((booking) => (
+            {bookings.slice(0, 5).map((booking) => (
               <button
                 key={booking.id}
                 onClick={() => booking.equipment && onSelectEquipment(booking.equipment.id)}
@@ -177,4 +252,8 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
