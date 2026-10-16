@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/Toast';
 import { supabase } from '@/lib/supabase';
-import { GraduationCap, Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, KeyRound } from 'lucide-react';
+import { GraduationCap, Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, KeyRound, ShieldCheck } from 'lucide-react';
 
 interface LoginProps {
   onNavigate: (page: string) => void;
 }
+
+type ForgotStep = 'email' | 'code' | 'reset';
 
 export function Login({ onNavigate }: LoginProps) {
   const { signIn } = useAuth();
@@ -18,8 +20,13 @@ export function Login({ onNavigate }: LoginProps) {
 
   // Forgot password state
   const [showForgot, setShowForgot] = useState(false);
+  const [forgotStep, setForgotStep] = useState<ForgotStep>('email');
   const [resetEmail, setResetEmail] = useState('');
-  const [resetLoading, setResetLoading] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,26 +47,98 @@ export function Login({ onNavigate }: LoginProps) {
     }
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  // Step 1: Send OTP code to email
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail.trim()) {
       showToast('Please enter your email address.', 'error');
       return;
     }
 
-    setResetLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-      redirectTo: window.location.origin,
+    setForgotLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: resetEmail.trim(),
+      options: { shouldCreateUser: false },
     });
-    setResetLoading(false);
+    setForgotLoading(false);
 
     if (error) {
-      showToast('Failed to send reset email: ' + error.message, 'error');
+      showToast('Failed to send code: ' + error.message, 'error');
     } else {
-      showToast('Password reset link sent to your email.', 'success');
-      setShowForgot(false);
-      setResetEmail('');
+      showToast('A 6-digit code has been sent to your email.', 'success');
+      setForgotStep('code');
     }
+  };
+
+  // Step 2: Verify the OTP code
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode.trim()) {
+      showToast('Please enter the code from your email.', 'error');
+      return;
+    }
+    if (otpCode.trim().length !== 6) {
+      showToast('The code must be 6 digits.', 'error');
+      return;
+    }
+
+    setForgotLoading(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email: resetEmail.trim(),
+      token: otpCode.trim(),
+      type: 'email',
+    });
+    setForgotLoading(false);
+
+    if (error) {
+      showToast('Invalid or expired code. Please try again.', 'error');
+    } else {
+      showToast('Code verified. You can now set a new password.', 'success');
+      setForgotStep('reset');
+    }
+  };
+
+  // Step 3: Set the new password
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || !confirmNewPassword) {
+      showToast('Please fill in both password fields.', 'error');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      showToast('Passwords do not match.', 'error');
+      return;
+    }
+    if (newPassword.length < 6) {
+      showToast('Password must be at least 6 characters.', 'error');
+      return;
+    }
+
+    setForgotLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setForgotLoading(false);
+
+    if (error) {
+      showToast('Failed to reset password: ' + error.message, 'error');
+    } else {
+      showToast('Password reset successfully. Please sign in with your new password.', 'success');
+      await supabase.auth.signOut();
+      resetForgotState();
+      setShowForgot(false);
+    }
+  };
+
+  const resetForgotState = () => {
+    setForgotStep('email');
+    setResetEmail('');
+    setOtpCode('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+  };
+
+  const handleBackToLogin = () => {
+    resetForgotState();
+    setShowForgot(false);
   };
 
   // Forgot password view
@@ -77,45 +156,167 @@ export function Login({ onNavigate }: LoginProps) {
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                <KeyRound className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Reset Password</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">We'll send a reset link to your email</p>
-              </div>
+            {/* Step indicator */}
+            <div className="flex items-center gap-2 mb-6">
+              <StepDot active={forgotStep === 'email'} label="1" done={forgotStep !== 'email'} />
+              <div className={`flex-1 h-0.5 ${forgotStep !== 'email' ? 'bg-blue-500' : 'bg-slate-200 dark:bg-slate-600'}`} />
+              <StepDot active={forgotStep === 'code'} label="2" done={forgotStep === 'reset'} />
+              <div className={`flex-1 h-0.5 ${forgotStep === 'reset' ? 'bg-blue-500' : 'bg-slate-200 dark:bg-slate-600'}`} />
+              <StepDot active={forgotStep === 'reset'} label="3" done={false} />
             </div>
 
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type="email"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    placeholder="you@university.edu"
-                    className="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    autoComplete="email"
-                    autoFocus
-                  />
+            {/* Step 1: Email */}
+            {forgotStep === 'email' && (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                    <KeyRound className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Reset Password</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Enter your email to receive a verification code</p>
+                  </div>
                 </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={resetLoading}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                {resetLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {resetLoading ? 'Sending...' : 'Send Reset Link'}
-              </button>
-            </form>
+                <form onSubmit={handleSendCode} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Email Address</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="email"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        placeholder="you@university.edu"
+                        className="w-full pl-10 pr-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        autoComplete="email"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    {forgotLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {forgotLoading ? 'Sending...' : 'Send Verification Code'}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* Step 2: Enter code */}
+            {forgotStep === 'code' && (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                    <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Enter Verification Code</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      A 6-digit code was sent to <span className="font-semibold text-slate-700 dark:text-slate-300">{resetEmail}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleVerifyCode} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Verification Code</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="123456"
+                      className="w-full text-center text-2xl font-bold tracking-[0.5em] px-3 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      autoFocus
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={forgotLoading || otpCode.length !== 6}
+                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    {forgotLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {forgotLoading ? 'Verifying...' : 'Verify Code'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSendCode}
+                    disabled={forgotLoading}
+                    className="w-full text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
+                  >
+                    Didn't receive a code? Resend
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* Step 3: New password */}
+            {forgotStep === 'reset' && (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">Set New Password</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Choose a new password for your account</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">New Password</label>
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      className="w-full pr-10 px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      autoComplete="new-password"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-[38px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    >
+                      {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Confirm New Password</label>
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      autoComplete="new-password"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={forgotLoading || !newPassword || !confirmNewPassword}
+                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    {forgotLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {forgotLoading ? 'Resetting...' : 'Reset Password'}
+                  </button>
+                </form>
+              </>
+            )}
 
             <button
-              onClick={() => setShowForgot(false)}
+              onClick={handleBackToLogin}
               className="mt-6 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -212,6 +413,22 @@ export function Login({ onNavigate }: LoginProps) {
 
         </div>
       </div>
+    </div>
+  );
+}
+
+function StepDot({ active, label, done }: { active: boolean; label: string; done: boolean }) {
+  return (
+    <div
+      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+        done
+          ? 'bg-blue-500 text-white'
+          : active
+          ? 'bg-blue-600 text-white'
+          : 'bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400'
+      }`}
+    >
+      {label}
     </div>
   );
 }
