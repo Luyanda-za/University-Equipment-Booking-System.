@@ -4,7 +4,7 @@ import { useToast } from '@/components/Toast';
 import { Modal } from '@/components/Modal';
 import { BookingStatusBadge } from '@/components/StatusBadge';
 import type { Booking } from '@/types/database';
-import { Loader2, Package, Check, X, Clock, MapPin, Filter, MessageSquare, ChevronDown } from 'lucide-react';
+import { Loader2, Package, Check, X, Clock, MapPin, Filter, MessageSquare, ChevronDown, RotateCcw } from 'lucide-react';
 
 export function AdminBookings() {
   const { showToast } = useToast();
@@ -86,6 +86,26 @@ export function AdminBookings() {
     setRejectionReason('');
   };
 
+  const handleMarkReturned = async (bookingId: string) => {
+    setActionId(bookingId);
+
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status: 'returned' })
+      .eq('id', bookingId)
+      .eq('status', 'approved');
+
+    setActionId(null);
+
+    if (error) {
+      showToast('Failed to mark as returned: ' + error.message, 'error');
+      return;
+    }
+
+    showToast('Equipment marked as returned.', 'success');
+    loadBookings();
+  };
+
   const handleReject = async () => {
     if (!rejectTarget) return;
 
@@ -150,6 +170,7 @@ export function AdminBookings() {
           <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
           <option value="cancelled">Cancelled</option>
+          <option value="returned">Returned</option>
         </select>
       </div>
 
@@ -221,6 +242,17 @@ export function AdminBookings() {
                         Reject
                       </button>
                     </div>
+                  )}
+
+                  {booking.status === 'approved' && (
+                    <button
+                      onClick={() => handleMarkReturned(booking.id)}
+                      disabled={actionId === booking.id}
+                      className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold px-3 py-1.5 rounded-lg text-sm transition-colors"
+                    >
+                      {actionId === booking.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                      Mark Returned
+                    </button>
                   )}
                 </div>
               </div>
