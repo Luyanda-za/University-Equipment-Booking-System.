@@ -1,3 +1,4 @@
+// React hooks manage editable form values and synchronize them with account data.
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -8,12 +9,15 @@ import {
   Check, Eye, EyeOff, Send, ArrowLeft,
 } from 'lucide-react';
 
+// The parent supplies navigation so this page can return to the appropriate dashboard.
 interface SettingsProps {
   onNavigate: (page: string) => void;
 }
 
+// Only these three appearance modes are supported by the theme selector.
 type ThemeMode = 'light' | 'dark' | 'system';
 
+// Account settings for profile details, password, appearance, and support messages.
 export function Settings({ onNavigate }: SettingsProps) {
   const { profile, session, refreshProfile } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -42,15 +46,18 @@ export function Settings({ onNavigate }: SettingsProps) {
   const [helpHistory, setHelpHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
+  // Refresh the form fields when the authenticated profile or session changes.
   useEffect(() => {
     setFullName(profile?.full_name ?? '');
     setNewEmail(session?.user?.email ?? '');
   }, [profile, session]);
 
+  // Load the user's recent support messages when the settings page opens.
   useEffect(() => {
     loadHelpHistory();
   }, []);
 
+  // Retrieve up to five recent support messages, newest first.
   const loadHelpHistory = async () => {
     const { data, error } = await supabase
       .from('help_messages')
@@ -64,7 +71,9 @@ export function Settings({ onNavigate }: SettingsProps) {
     setLoadingHistory(false);
   };
 
+  // Validate the display name, save it to the profile table, and refresh profile context.
   const handleSaveName = async () => {
+    // Do not allow a blank display name.
     if (!fullName.trim()) {
       showToast('Name cannot be empty.', 'error');
       return;
@@ -84,7 +93,9 @@ export function Settings({ onNavigate }: SettingsProps) {
     }
   };
 
+  // Request an email update through Supabase Auth; confirmation may be required.
   const handleSaveEmail = async () => {
+    // Check for an empty email before calling Supabase Auth.
     if (!newEmail.trim()) {
       showToast('Email cannot be empty.', 'error');
       return;
@@ -103,7 +114,9 @@ export function Settings({ onNavigate }: SettingsProps) {
     }
   };
 
+  // Validate the password entries, verify the current password, and update the password.
   const handleChangePassword = async () => {
+    // Require every password field before continuing.
     if (!currentPassword || !newPassword || !confirmPassword) {
       showToast('Please fill in all password fields.', 'error');
       return;
@@ -119,7 +132,7 @@ export function Settings({ onNavigate }: SettingsProps) {
 
     setSavingPassword(true);
 
-    // Verify current password by re-authenticating
+    // Re-authenticate to confirm the current password before changing it.
     const { error: reauthError } = await supabase.auth.signInWithPassword({
       email: session?.user?.email ?? '',
       password: currentPassword,
@@ -144,6 +157,7 @@ export function Settings({ onNavigate }: SettingsProps) {
     }
   };
 
+  // Save a support request and clear the form after a successful submission.
   const handleSendHelp = async () => {
     if (!helpSubject.trim() || !helpMessage.trim()) {
       showToast('Please fill in the subject and message.', 'error');
@@ -151,6 +165,7 @@ export function Settings({ onNavigate }: SettingsProps) {
     }
 
     setSendingHelp(true);
+    // Insert the support request into Supabase.
     const { error } = await supabase
       .from('help_messages')
       .insert({
@@ -169,6 +184,7 @@ export function Settings({ onNavigate }: SettingsProps) {
     }
   };
 
+  // Keep each theme's internal value, visible label, and icon together for rendering.
   const themeOptions: { mode: ThemeMode; label: string; icon: typeof Sun }[] = [
     { mode: 'light', label: 'Light', icon: Sun },
     { mode: 'dark', label: 'Dark', icon: Moon },
@@ -177,7 +193,7 @@ export function Settings({ onNavigate }: SettingsProps) {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Back button */}
+      {/* Return to the dashboard matching the signed-in user's role. */}
       <button
         onClick={() => onNavigate(profile?.role === 'admin' ? 'admin-dashboard' : 'dashboard')}
         className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 mb-4 transition-colors"
@@ -186,7 +202,7 @@ export function Settings({ onNavigate }: SettingsProps) {
         Back
       </button>
 
-      {/* Header */}
+      {/* Identify the page and show the current user's display name. */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Your account settings</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -195,7 +211,7 @@ export function Settings({ onNavigate }: SettingsProps) {
       </div>
 
       <div className="space-y-6">
-        {/* Profile Name */}
+        {/* Display-name editor with save/loading feedback. */}
         <SettingsSection icon={User} title="Display Name" description="Update the name shown on your account">
           <div className="flex flex-col sm:flex-row gap-3">
             <input
@@ -216,7 +232,7 @@ export function Settings({ onNavigate }: SettingsProps) {
           </div>
         </SettingsSection>
 
-        {/* Email */}
+        {/* Email editor; the user is told to confirm the new address. */}
         <SettingsSection icon={Mail} title="Email Address" description="Update the email associated with your account">
           <div className="flex flex-col sm:flex-row gap-3">
             <input
@@ -240,7 +256,7 @@ export function Settings({ onNavigate }: SettingsProps) {
           </p>
         </SettingsSection>
 
-        {/* Password */}
+        {/* Password-change form with visibility toggles and validation feedback. */}
         <SettingsSection icon={Lock} title="Change Password" description="Update your account password">
           <div className="space-y-3">
             <div className="relative">
@@ -303,7 +319,7 @@ export function Settings({ onNavigate }: SettingsProps) {
           </div>
         </SettingsSection>
 
-        {/* Theme */}
+        {/* Theme buttons highlight the currently selected appearance mode. */}
         <SettingsSection icon={Sun} title="Theme" description="Choose your preferred appearance">
           <div className="grid grid-cols-3 gap-3">
             {themeOptions.map((option) => {
@@ -327,7 +343,7 @@ export function Settings({ onNavigate }: SettingsProps) {
           </div>
         </SettingsSection>
 
-        {/* Help & Support */}
+        {/* Support form for sending a subject and message to the admin team. */}
         <SettingsSection icon={LifeBuoy} title="Help & Support" description="Send a message to the admin team">
           <div className="space-y-3">
             <input
@@ -353,7 +369,7 @@ export function Settings({ onNavigate }: SettingsProps) {
               Send to Admin
             </button>
 
-            {/* Help history */}
+            {/* Display recent support requests once the history has loaded. */}
             {!loadingHistory && helpHistory.length > 0 && (
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
                 <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Your recent messages</p>
@@ -386,6 +402,7 @@ export function Settings({ onNavigate }: SettingsProps) {
   );
 }
 
+// Reusable section layout ensures each settings group has consistent styling.
 function SettingsSection({
   icon: Icon,
   title,
